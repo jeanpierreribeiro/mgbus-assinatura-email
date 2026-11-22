@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerador de Assinaturas · mgbus</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="logo.png">
+<style>
+  :root{
+    --brand:#0A3D7A; --brand-2:#F2A900;
+    --bg:#F4F6F9; --panel:#FFFFFF; --line:#E2E6EC; --ink:#1C2430; --muted:#6B7685; --soft:#EEF2F7;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .app{display:grid;grid-template-columns:minmax(380px,470px) 1fr;height:100vh}
+
+  /* ---------- Topbar ---------- */
+  .brandbar{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .brandbar .logo{font-weight:800;font-size:20px;letter-spacing:-.5px;color:var(--brand)}
+  .brandbar .logo b{color:var(--brand)}
+  .brandbar small{color:var(--muted)}
+
+  /* ---------- Left panel ---------- */
+  .left{display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0}
+  .left-body{display:grid;grid-template-columns:76px 1fr;flex:1;min-height:0}
+  .rail{border-right:1px solid var(--line);padding:10px 6px;display:flex;flex-direction:column;gap:4px;background:#FAFBFC}
+  .rail button{border:0;background:none;border-radius:8px;padding:10px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:11.5px}
+  .rail button svg{width:20px;height:20px}
+  .rail button:hover{background:var(--soft);color:var(--ink)}
+  .rail button.active{background:var(--brand);color:#fff}
+  .panes{overflow:auto;padding:18px 18px 40px}
+  .pane{display:none}
+  .pane.active{display:block}
+  .pane h2{font-size:16px;margin:0 0 4px}
+  .pane .hint{color:var(--muted);margin:0 0 16px;font-size:12.5px;line-height:1.45}
+  fieldset{border:0;padding:0;margin:0 0 20px}
+  legend{font-weight:650;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;padding:0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row.r3{grid-template-columns:2fr 1fr}
+  label.f{display:block;margin-bottom:10px}
+  label.f>span{display:block;font-size:12.5px;margin-bottom:4px;color:#3A4553}
+  input[type=text],input[type=url],input[type=email],input[type=tel],input[type=number],select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent)}
+  input:disabled,select:disabled{background:var(--soft);color:var(--muted)}
+  textarea{min-height:110px;resize:vertical;line-height:1.45}
+  .field-note{font-size:11.5px;color:var(--muted);margin-top:4px}
+  .field-note.warn{color:#B45309}
+  .check{display:flex;gap:8px;align-items:flex-start;margin:6px 0 12px;font-size:13px;cursor:pointer}
+  .check input{margin-top:2px}
+
+  .btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:550}
+  .btn:hover{background:var(--soft)}
+  a.btn{text-decoration:none;color:inherit}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{filter:brightness(1.1)}
+  .btn.danger{color:#B42318}
+  .btn.sm{padding:5px 9px;font-size:12.5px}
+  .btn.ghost{border-color:transparent;background:none}
+
+  /* templates */
+  .tpls{display:grid;gap:10px}
+  .tpl{border:1.5px solid var(--line);border-radius:var(--radius);padding:12px;display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;cursor:pointer;background:#fff;text-align:left}
+  .tpl:hover{border-color:#B9C3D0}
+  .tpl.active{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 15%,transparent)}
+  .tpl svg{width:120px;height:72px;display:block;background:var(--soft);border-radius:6px}
+  .tpl b{display:block;margin-bottom:3px}
+  .tpl small{color:var(--muted);line-height:1.4;display:block}
+
+  /* custom fields */
+  .custom-row{display:grid;grid-template-columns:1fr 1.4fr auto;gap:6px;margin-bottom:6px}
+
+  /* uploads */
+  .media{border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:14px}
+  .media-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .media-head b{font-size:13.5px}
+  .upload-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  .upload-line input[type=file]{display:none}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg label{padding:6px 11px;cursor:pointer;font-size:12.5px;border-right:1px solid var(--line);user-select:none}
+  .seg label:last-child{border-right:0}
+  .seg input{display:none}
+  .seg input:checked+span{color:#fff}
+  .seg label:has(input:checked){background:var(--brand);color:#fff}
+
+  /* colors */
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .swatch{border:1.5px solid var(--line);border-radius:8px;padding:6px 9px;display:flex;gap:6px;align-items:center;cursor:pointer;background:#fff;font-size:12.5px}
+  .swatch i{width:14px;height:14px;border-radius:4px;display:inline-block}
+  .swatch:hover{border-color:#B9C3D0}
+  .colorline{display:grid;grid-template-columns:38px 1fr;gap:8px;align-items:center}
+  .colorline input[type=color]{width:38px;height:36px;border:1px solid var(--line);border-radius:8px;padding:2px;background:#fff;cursor:pointer}
+  .colorline input[type=color]:disabled{cursor:not-allowed;opacity:.6}
+
+  /* ---------- Right / preview ---------- */
+  .right{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .toolbar{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .toolbar .spacer{flex:1}
+  .counter{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;padding:4px 8px;border-radius:6px;background:var(--soft)}
+  .counter.bad{background:#FEE4E2;color:#B42318}
+  .stage{flex:1;overflow:auto;padding:28px 20px 40px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .mail{width:100%;max-width:760px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(16,24,40,.07);overflow:hidden;transition:max-width .25s}
+  .mail.mobile{max-width:375px}
+  .mail-top{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#F7F8FA;border-bottom:1px solid var(--line)}
+  .mail-top i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .mail-top span{margin-left:8px;font-size:12.5px;color:var(--muted)}
+  .mail-field{display:flex;gap:10px;padding:9px 18px;border-bottom:1px solid var(--line);font-size:13px}
+  .mail-field b{color:var(--muted);font-weight:500;width:56px}
+  .mail-body{padding:22px 18px 26px;overflow-x:auto}
+  .mail-body .msg{font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.5;margin:0 0 18px}
+  .mail.dark .mail-body{background:#1E1F22}
+  .mail.dark .mail-body .msg{color:#E6E6E6}
+  .mail.dark #sig{filter:invert(1) hue-rotate(180deg)}
+  .mail.dark #sig img{filter:invert(1) hue-rotate(180deg)}
+  .warnings{width:100%;max-width:760px;display:flex;flex-direction:column;gap:6px}
+  .warn-item{font-size:12.5px;padding:8px 12px;border-radius:8px;background:#FFF7E6;color:#7A4B00;border:1px solid #FBE3B0;display:flex;gap:8px;line-height:1.4}
+  .warn-item.info{background:#EEF4FF;color:#26407A;border-color:#D4E0FB}
+  .warn-item.err{background:#FEF0EF;color:#912018;border-color:#FBD3CF}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 30px 60px rgba(0,0,0,.25)}
+  .modal header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line)}
+  .modal header h3{margin:0;font-size:17px}
+  .modal .content{padding:18px 22px 22px}
+  .export-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .export-card{border:1px solid var(--line);border-radius:10px;padding:14px;text-align:left;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+  .export-card:hover{border-color:var(--brand);background:#F8FAFD}
+  .export-card b{font-size:13.5px}
+  .export-card small{color:var(--muted);line-height:1.4}
+  .export-card svg{width:22px;height:22px;color:var(--brand)}
+  details.howto{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+  details.howto summary{padding:11px 14px;cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between}
+  details.howto summary::after{content:"+";color:var(--muted);font-weight:400}
+  details.howto[open] summary::after{content:"–"}
+  details.howto ol{margin:0;padding:0 18px 14px 34px;line-height:1.6;color:#334}
+  details.howto code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:12px}
+  .guide-box{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;background:#FAFBFC;font-size:12.5px;line-height:1.5}
+  .guide-box ol{margin:6px 0 10px;padding-left:20px}
+  .guide-box .warnings{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .guide-actions{display:flex;flex-wrap:wrap;gap:6px}
+  details.guide summary{font-size:13.5px}
+  details.guide .guide-body{padding:0 14px 12px;font-size:12.5px;line-height:1.55;color:#334}
+  details.guide .guide-body p{margin:0 0 10px}
+  details.guide h4{font-size:12.5px;margin:14px 0 6px;color:var(--brand)}
+  details.guide ol{padding:0 0 0 20px;margin:0 0 8px}
+  details.guide ol li{margin-bottom:4px}
+  details.guide ul{padding-left:18px;margin:4px 0}
+  details.guide code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .tip{background:#EEF4FF;border:1px solid #D4E0FB;color:#26407A;border-radius:8px;padding:8px 10px;font-size:12px}
+  .confirm .content p{margin:0 0 18px;line-height:1.5}
+  .actions{display:flex;justify-content:flex-end;gap:8px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:all .2s;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr;height:auto}
+    .left{max-height:none}
+    .panes{max-height:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= LEFT: CONFIG ================= -->
+  <aside class="left">
+    <div class="brandbar">
+      <div class="logo">mg<b>bus</b></div>
+      <small>Gerador de assinaturas de e-mail</small>
+    </div>
+    <div class="left-body">
+      <nav class="rail" id="rail">
+        <button data-tab="modelos" class="active" title="Modelos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Modelos</button>
+        <button data-tab="detalhes" title="Detalhes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Detalhes</button>
+        <button data-tab="imagens" title="Imagens">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>Imagens</button>
+        <button data-tab="estilos" title="Estilos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-1.3-1.1-1.6-1.1-2.7 0-.9.7-1.5 1.6-1.5H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg>Estilos</button>
+        <button data-tab="instalar" title="Instalar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Instalar</button>
+      </nav>
+
+      <div class="panes">
+        <!-- ---------- MODELOS ---------- -->
+        <section class="pane active" id="pane-modelos">
+          <h2>Modelos</h2>
+          <p class="hint">Escolha a estrutura da assinatura. Todos os modelos são montados com tabelas HTML e estilos inline, compatíveis com Gmail, Outlook, Apple Mail e Thunderbird.</p>
+          <div class="tpls" id="tpls">
+            <button class="tpl" data-layout="horizontal">
+              <svg viewBox="0 0 120 72"><circle cx="22" cy="28" r="13" fill="#C9D3E0"/><circle cx="14" cy="52" r="2.6" fill="currentColor" style="color:var(--brand)"/><circle cx="22" cy="52" r="2.6" fill="currentColor" style="color:var(--brand)"/><circle cx="30" cy="52" r="2.6" fill="currentColor" style="color:var(--brand)"/><rect x="44" y="12" width="2" height="48" fill="currentColor" style="color:var(--brand)"/><rect x="56" y="16" width="44" height="6" rx="2" fill="#8A97A8"/><rect x="56" y="26" width="32" height="4" rx="2" fill="#C9D3E0"/><rect x="56" y="36" width="50" height="3.5" rx="1.5" fill="#D9E0EA"/><rect x="56" y="43" width="42" height="3.5" rx="1.5" fill="#D9E0EA"/><rect x="56" y="50" width="30" height="3.5" rx="1.5" fill="#D9E0EA"/></svg>
+              <div><b>Esquerda</b><small>O logo fica à esquerda, com os ícones das redes sociais logo abaixo dele; uma linha divisória separa esse bloco dos seus dados de contato, que ficam à direita.</small></div>
+            </button>
+            <button class="tpl" data-layout="duas">
+              <svg viewBox="0 0 120 72"><rect x="10" y="16" width="44" height="6" rx="2" fill="#8A97A8"/><rect x="10" y="26" width="32" height="4" rx="2" fill="#C9D3E0"/><rect x="10" y="36" width="50" height="3.5" rx="1.5" fill="#D9E0EA"/><rect x="10" y="43" width="42" height="3.5" rx="1.5" fill="#D9E0EA"/><rect x="10" y="50" width="30" height="3.5" rx="1.5" fill="#D9E0EA"/><rect x="72" y="12" width="2" height="48" fill="currentColor" style="color:var(--brand)"/><circle cx="96" cy="28" r="13" fill="#C9D3E0"/><circle cx="88" cy="52" r="2.6" fill="currentColor" style="color:var(--brand)"/><circle cx="96" cy="52" r="2.6" fill="currentColor" style="color:var(--brand)"/><circle cx="104" cy="52" r="2.6" fill="currentColor" style="color:var(--brand)"/></svg>
+              <div><b>Direita</b><small>Seus dados de contato ficam à esquerda; uma linha divisória os separa do logo, que fica à direita com os ícones das redes sociais logo abaixo dele.</small></div>
+            </button>
+          </div>
+        </section>
+
+        <!-- ---------- DETALHES ---------- -->
+        <section class="pane" id="pane-detalhes">
+          <h2>Detalhes</h2>
+          <p class="hint">Campos vazios não aparecem na assinatura.</p>
+
+          <fieldset>
+            <legend>Identificação</legend>
+            <label class="f"><span>Nome e sobrenome</span><input type="text" data-k="nome" placeholder="Maria Silva"></label>
+            <div class="row">
+              <label class="f"><span>Cargo / função</span><input type="text" data-k="cargo" placeholder="Analista de Tráfego"></label>
+              <label class="f"><span>Departamento</span>
+                <input type="text" data-k="depto" list="deptos" placeholder="Tráfego">
+                <datalist id="deptos"><option>Tráfego</option><option>Manutenção</option><option>Operações</option><option>TI</option><option>RH</option><option>Financeiro</option><option>Comercial</option><option>Diretoria</option></datalist>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Contato</legend>
+            <label class="f"><span>Telefone comercial</span><input type="tel" data-k="telefone" data-phone placeholder="(31) 3000-0000"></label>
+            <label class="f"><span>Celular / WhatsApp comercial</span><input type="tel" data-k="celular" data-phone placeholder="(31) 99999-0000"></label>
+            <label class="f"><span>E-mail corporativo</span><input type="email" data-k="email" placeholder="maria.silva@mgbusefacin.com.br">
+              <div class="field-note warn" id="emailWarn" hidden></div></label>
+            <label class="f"><span>Site</span><input type="text" data-k="site" placeholder="mgbusefacin.com.br"></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Endereço</legend>
+            <label class="f"><span>Logradouro e número</span><input type="text" data-k="end1" placeholder="Rua Exemplo, 1000"></label>
+            <label class="f"><span>Bairro e complemento</span><input type="text" data-k="end2" placeholder="Centro"></label>
+            <label class="f"><span>Cidade, UF e CEP</span><input type="text" data-k="end3" placeholder="Belo Horizonte – MG, 30000-000"></label>
+            <label class="f"><span>Link do endereço (Google Meu Negócio / Maps)</span><input type="text" data-k="mapsUrl" placeholder="https://share.google/..."></label>
+            <div class="field-note">Ao clicar no endereço da assinatura, abre este link. Deixe vazio para o endereço ficar só como texto.</div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Redes sociais</legend>
+            <label class="f"><span>LinkedIn</span><input type="text" data-k="linkedin" placeholder="linkedin.com/company/mgbus"></label>
+            <label class="f"><span>Instagram</span><input type="text" data-k="instagram" placeholder="instagram.com/mgbus"></label>
+            <label class="f"><span>Facebook</span><input type="text" data-k="facebook" placeholder="facebook.com/mgbus"></label>
+            <label class="f"><span>X (Twitter)</span><input type="text" data-k="x" placeholder="x.com/mgbus"></label>
+            <label class="f"><span>WhatsApp</span><input type="text" data-k="whatsapp" placeholder="https://wa.me/5531999990000"></label>
+            <label class="check"><input type="checkbox" data-k="waAuto"> Gerar o link do WhatsApp a partir do celular quando o campo acima estiver vazio</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Campos personalizados</legend>
+            <div id="customList"></div>
+            <button class="btn sm" id="addCustom" type="button">+ Adicionar campo</button>
+          </fieldset>
+
+          <fieldset>
+            <legend>Rodapé jurídico / LGPD</legend>
+            <label class="check"><input type="checkbox" data-k="legalOn"> Incluir aviso de confidencialidade</label>
+            <textarea data-k="legal" id="legalText"></textarea>
+            <div class="field-note">O texto padrão está travado enquanto “Usar padrão da marca” estiver ativo na aba Estilos.</div>
+          </fieldset>
+        </section>
+
+        <!-- ---------- IMAGENS ---------- -->
+        <section class="pane" id="pane-imagens">
+          <h2>Imagens e mídia</h2>
+          <p class="hint">Na assinatura final, toda imagem precisa de uma URL pública em HTTPS. O envio de arquivo serve só para ver como fica no preview: ele não entra no código exportado.</p>
+
+          <div class="media">
+            <div class="media-head"><b>Logotipo institucional</b>
+              <label class="check" style="margin:0"><input type="checkbox" data-k="showLogo"> Exibir</label></div>
+            <label class="f"><span>URL do logotipo (HTTPS)</span><input type="url" data-k="logoUrl" placeholder="https://mgbusefacin.com.br/assinatura/logo.png"></label>
+            <div class="upload-line">
+              <label class="btn sm">Enviar arquivo para pré-visualizar<input type="file" accept="image/*" data-upload="logoData"></label>
+              <button class="btn sm ghost danger" data-clear="logoData" type="button" hidden>Remover arquivo</button>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <label class="f"><span>Largura (px)</span><input type="number" min="40" max="300" data-k="logoW"></label>
+              <label class="f"><span>Altura (px)</span><input type="number" min="16" max="150" data-k="logoH"></label>
+            </div>
+            <div class="field-note">O logo padrão da MG Bus &amp; Facin já vem carregado em 120×120 px. Para usar outro, envie o arquivo (a altura se ajusta à proporção) ou informe a URL; “Remover arquivo” volta ao logo padrão. Na assinatura exportada, o logo só aparece com URL HTTPS: hospede <code>gerador/logo.png</code> e informe o endereço.</div>
+          </div>
+
+        </section>
+
+        <!-- ---------- ESTILOS ---------- -->
+        <section class="pane" id="pane-estilos">
+          <h2>Estilos e tipografia</h2>
+          <p class="hint">Por padrão, as cores, a fonte e o rodapé jurídico seguem a identidade da mgbus. Desative a opção abaixo para personalizar.</p>
+          <label class="check"><input type="checkbox" data-k="brandLock"> <span><b>Usar padrão da marca</b><br><span style="color:var(--muted);font-size:12.5px">Trava cores, fonte e rodapé jurídico nos valores oficiais.</span></span></label>
+
+          <fieldset>
+            <legend>Paleta</legend>
+            <div class="swatches" id="swatches"></div>
+            <label class="f"><span>Cor primária (divisórias, ícones, destaques)</span>
+              <div class="colorline"><input type="color" data-color="primary"><input type="text" data-k="primary" maxlength="7"></div></label>
+            <label class="f"><span>Cor do texto</span>
+              <div class="colorline"><input type="color" data-color="text"><input type="text" data-k="text" maxlength="7"></div></label>
+            <label class="f"><span>Cor dos links</span>
+              <div class="colorline"><input type="color" data-color="link"><input type="text" data-k="link" maxlength="7"></div></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Tipografia</legend>
+            <label class="f"><span>Fonte (web-safe)</span>
+              <select data-k="font">
+                <option>Arial</option><option>Trebuchet MS</option><option>Verdana</option><option>Tahoma</option><option>Georgia</option><option>Times New Roman</option>
+              </select></label>
+            <span style="font-size:12.5px;display:block;margin-bottom:4px">Tamanho</span>
+            <div class="seg">
+              <label><input type="radio" name="scale" value="s" data-k="scale">Pequeno</label>
+              <label><input type="radio" name="scale" value="m" data-k="scale">Médio</label>
+              <label><input type="radio" name="scale" value="l" data-k="scale">Grande</label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Ícones das redes sociais</legend>
+            <label class="f"><span>Pasta dos ícones PNG (HTTPS)</span><input type="url" data-k="iconBase" placeholder="https://mgbusefacin.com.br/assinatura/icones"></label>
+            <div class="field-note">Os ícones já aparecem no preview. Para a assinatura exportada mostrá-los, hospede os arquivos da pasta <code>gerador/icones</code> (<code>linkedin.png</code>, <code>instagram.png</code>, <code>facebook.png</code>, <code>whatsapp.png</code>) em HTTPS e informe a pasta aqui. Sem a pasta, a assinatura exportada usa selos em texto.</div>
+          </fieldset>
+        </section>
+
+        <!-- ---------- INSTALAR ---------- -->
+        <section class="pane" id="pane-instalar">
+          <h2>Instalar a assinatura</h2>
+          <p class="hint">Siga o guia do aplicativo que você usa. Faça tudo no computador, com o Google Chrome ou o Microsoft Edge, exceto o Outlook Mobile.</p>
+
+          <div class="guide-box">
+            <b>Antes de começar</b>
+            <ol>
+              <li>Preencha seus dados na aba <b>Detalhes</b> e confira o resultado no preview ao lado.</li>
+              <li>Leia os avisos abaixo, se houver. Eles mostram o que ainda não vai aparecer na assinatura instalada.</li>
+              <li>Use os botões abaixo quando o guia pedir. Depois de clicar em <b>Copiar assinatura</b>, aparece a mensagem “Assinatura copiada” no rodapé da tela: a assinatura fica guardada na área de transferência e você só precisa colar.</li>
+            </ol>
+            <div class="warnings" id="installWarnings"></div>
+            <div class="guide-actions">
+              <button class="btn primary" type="button" data-act="copyRich">Copiar assinatura</button>
+              <button class="btn" type="button" data-act="downloadHtm">Baixar arquivo .htm</button>
+              <button class="btn" type="button" id="copyMobile">Copiar versão para celular</button>
+            </div>
+          </div>
+
+          <!-- 1. OUTLOOK DESKTOP -->
+          <details class="howto guide" open><summary>1. Outlook no computador (desktop)</summary>
+            <div class="guide-body">
+              <p><b>Qual Outlook você usa?</b> Abra o Outlook e olhe o canto superior esquerdo. Se houver o menu <b>Arquivo</b>, é o <b>Outlook clássico</b> (A). Se não houver e aparecer uma chave <b>“Novo Outlook”</b> ligada no canto superior direito, é o <b>novo Outlook</b> (B). No Mac, siga o item C.</p>
+
+              <h4>A) Outlook clássico para Windows: copiar e colar</h4>
+              <ol>
+                <li>Neste gerador, clique em <b>Copiar assinatura</b>.</li>
+                <li>No Outlook, clique em <b>Arquivo</b> (canto superior esquerdo) e depois em <b>Opções</b> (no fim da lista à esquerda).</li>
+                <li>Na janela <b>Opções do Outlook</b>, clique em <b>Email</b> no menu da esquerda.</li>
+                <li>Na seção “Criar ou modificar assinaturas para mensagens”, clique no botão <b>Assinaturas...</b>.</li>
+                <li>Na aba <b>Assinatura de Email</b>, clique em <b>Novo</b>, digite um nome (por exemplo, <code>MG Bus</code>) e clique em <b>OK</b>.</li>
+                <li>Clique dentro da caixa grande <b>Editar assinatura</b>, na parte de baixo da janela, e pressione <code>Ctrl+V</code>. A assinatura aparece com as cores e a formatação (o logo e os ícones só aparecem depois de hospedados; veja os avisos acima).</li>
+                <li>No lado direito, em <b>Escolher assinatura padrão</b>:
+                  <ul>
+                    <li>em <b>Conta de email</b>, selecione o seu e-mail @mgbusefacin.com.br;</li>
+                    <li>em <b>Novas mensagens</b>, selecione <code>MG Bus</code>;</li>
+                    <li>em <b>Respostas/encaminhamentos</b>, selecione <code>MG Bus</code> também (ou “(nenhuma)”, se preferir não repetir a assinatura nas respostas).</li>
+                  </ul></li>
+                <li>Clique em <b>OK</b> para fechar a janela de assinaturas e em <b>OK</b> de novo para fechar as Opções.</li>
+                <li>Teste: clique em <b>Novo Email</b>. A assinatura deve aparecer no corpo da mensagem.</li>
+              </ol>
+              <p class="tip">Depois de colar, evite editar a assinatura nessa caixa: o editor do Outlook clássico pode desalinhar a tabela. Se precisar mudar algo, altere no gerador e cole de novo.</p>
+
+              <h4>A2) Outlook clássico: pelo arquivo .htm (se a colagem perder a formatação)</h4>
+              <ol>
+                <li>Neste gerador, clique em <b>Baixar arquivo .htm</b>. O arquivo vai para a pasta <b>Downloads</b>. O nome do arquivo é o nome que aparecerá no Outlook; se quiser, renomeie para <code>MG Bus.htm</code>.</li>
+                <li>Feche o Outlook completamente.</li>
+                <li>Pressione as teclas <code>Windows+R</code>, digite <code>%APPDATA%\Microsoft\Signatures</code> e pressione <code>Enter</code>. Abre a pasta de assinaturas do Outlook. (Se aparecer “pasta não encontrada”, abra <code>%APPDATA%\Microsoft</code> e crie uma pasta chamada <code>Signatures</code>.)</li>
+                <li>Mova o arquivo <code>.htm</code> da pasta Downloads para essa pasta.</li>
+                <li>Abra o Outlook e vá em <b>Arquivo → Opções → Email → Assinaturas...</b>.</li>
+                <li>Em <b>Escolher assinatura padrão</b>, selecione a assinatura em <b>Novas mensagens</b> e em <b>Respostas/encaminhamentos</b> e clique em <b>OK</b>.</li>
+              </ol>
+
+              <h4>B) Novo Outlook para Windows</h4>
+              <ol>
+                <li>Neste gerador, clique em <b>Copiar assinatura</b>.</li>
+                <li>No Outlook, clique na <b>engrenagem (Configurações)</b>, no canto superior direito.</li>
+                <li>No menu da esquerda, clique em <b>Contas</b> e depois em <b>Assinaturas</b>.</li>
+                <li>Se você tiver mais de uma conta, escolha o seu e-mail @mgbusefacin.com.br na lista do topo.</li>
+                <li>Clique em <b>+ Adicionar assinatura</b> (ou <b>+ Nova assinatura</b>) e digite um nome, por exemplo <code>MG Bus</code>.</li>
+                <li>Clique dentro da caixa de edição e pressione <code>Ctrl+V</code>.</li>
+                <li>Marque as opções para usar a assinatura em <b>novas mensagens</b> e em <b>respostas e encaminhamentos</b> (em algumas versões elas aparecem em “Selecionar assinaturas padrão”).</li>
+                <li>Clique em <b>Salvar</b> e feche as Configurações.</li>
+                <li>Teste: clique em <b>Novo email</b> e confira a assinatura.</li>
+              </ol>
+
+              <h4>C) Outlook para Mac</h4>
+              <ol>
+                <li>Abra este gerador no <b>Safari</b> ou no Chrome e clique em <b>Copiar assinatura</b>.</li>
+                <li>No Outlook, abra o menu <b>Outlook</b> (barra superior, ao lado da maçã) e clique em <b>Configurações</b>.</li>
+                <li>Em <b>Email</b>, clique em <b>Assinaturas</b>.</li>
+                <li>Clique em <b>+</b> (Adicionar), dê o nome <code>MG Bus</code>, clique na área de edição e cole com <code>⌘+V</code>.</li>
+                <li>Clique em <b>Salvar</b> e feche a janela do editor.</li>
+                <li>De volta à lista, em <b>Escolher assinatura padrão</b>, selecione <code>MG Bus</code> em <b>Novas mensagens</b> e em <b>Respostas/encaminhamentos</b>.</li>
+              </ol>
+            </div>
+          </details>
+
+          <!-- 2. OUTLOOK WEB -->
+          <details class="howto guide"><summary>2. Outlook Web (navegador)</summary>
+            <div class="guide-body">
+              <ol>
+                <li>Neste gerador, clique em <b>Copiar assinatura</b>.</li>
+                <li>Em outra aba do navegador, abra <code>outlook.office.com</code> e entre com o seu e-mail @mgbusefacin.com.br e senha.</li>
+                <li>Clique na <b>engrenagem (Configurações)</b>, no canto superior direito.</li>
+                <li>No menu da esquerda, clique em <b>Contas</b> e depois em <b>Assinaturas</b>.</li>
+                <li>Clique em <b>+ Nova assinatura</b> e digite um nome, por exemplo <code>MG Bus</code>.</li>
+                <li>Clique dentro da caixa de edição e pressione <code>Ctrl+V</code> (no Mac, <code>⌘+V</code>).</li>
+                <li>Clique em <b>Salvar</b>.</li>
+                <li>Logo abaixo, em <b>Selecionar assinaturas padrão</b>, escolha <code>MG Bus</code> em <b>Para novas mensagens</b> e em <b>Para respostas/encaminhamentos</b>.</li>
+                <li>Clique em <b>Salvar</b> de novo e feche as Configurações no <b>X</b>.</li>
+                <li>Teste: clique em <b>Novo email</b>. A assinatura deve aparecer no fim da mensagem.</li>
+              </ol>
+              <p class="tip">Se a assinatura não aparecer automaticamente, abra um novo e-mail e use <b>Inserir → Assinatura</b> (ou o menu <b>...</b> da mensagem) e escolha <code>MG Bus</code>.</p>
+            </div>
+          </details>
+
+          <!-- 3. OUTLOOK MOBILE -->
+          <details class="howto guide"><summary>3. Outlook Mobile (celular)</summary>
+            <div class="guide-body">
+              <p class="tip">O aplicativo do Outlook no celular não usa a assinatura do computador e tem um editor simples. No <b>Android</b>, a assinatura fica só em texto, sem logo nem ícones. No <b>iPhone</b>, a formatação pode até ser colada, mas o logo e os ícones costumam não chegar a quem recebe. Por isso, use a <b>versão para celular</b>, em texto.</p>
+
+              <h4>Passo 1: levar a assinatura para o celular</h4>
+              <ol>
+                <li>Neste gerador, no computador, clique em <b>Copiar versão para celular</b>.</li>
+                <li>Abra o seu e-mail no computador, crie uma nova mensagem <b>para você mesmo</b>, cole com <code>Ctrl+V</code> no corpo e envie.</li>
+              </ol>
+
+              <h4>Passo 2: copiar no celular</h4>
+              <ol>
+                <li>No celular, abra o app <b>Outlook</b> e abra o e-mail que você enviou para si.</li>
+                <li>Toque e segure sobre a primeira linha (seu nome) até aparecer a seleção.</li>
+                <li>Arraste a marcação até a última linha do endereço e toque em <b>Copiar</b>.</li>
+              </ol>
+
+              <h4>Passo 3: colar na assinatura do app</h4>
+              <ol>
+                <li>No app Outlook, toque na sua <b>foto ou ícone da conta</b>, no canto superior esquerdo.</li>
+                <li>Toque na <b>engrenagem (Configurações)</b>, no canto inferior esquerdo.</li>
+                <li>Na seção <b>Correio</b>, toque em <b>Assinatura</b>.</li>
+                <li>Se tiver mais de uma conta, ative <b>Assinatura por conta</b> e use a caixa do seu e-mail @mgbusefacin.com.br.</li>
+                <li>Apague o texto que já vem escrito (como “Obter o Outlook para Android/iOS”).</li>
+                <li>Toque e segure dentro da caixa e toque em <b>Colar</b>.</li>
+                <li>Confira o texto e volte (seta ou <b>✓</b> no topo) para salvar.</li>
+                <li>Teste: toque em <b>Novo email</b> e veja se a assinatura aparece no fim.</li>
+              </ol>
+            </div>
+          </details>
+
+          <!-- 4. GMAIL -->
+          <details class="howto guide"><summary>4. Gmail</summary>
+            <div class="guide-body">
+              <ol>
+                <li>Neste gerador, clique em <b>Copiar assinatura</b>.</li>
+                <li>Em outra aba, abra <code>mail.google.com</code> no computador e entre na sua conta.</li>
+                <li>Clique na <b>engrenagem (Configurações)</b>, no canto superior direito, e depois em <b>Ver todas as configurações</b>.</li>
+                <li>Na aba <b>Geral</b> (a primeira), role a página até a seção <b>Assinatura</b>.</li>
+                <li>Clique em <b>+ Criar nova</b>, digite um nome (por exemplo, <code>MG Bus</code>) e clique em <b>Criar</b>.</li>
+                <li>Clique dentro da caixa de texto que aparece à direita do nome e pressione <code>Ctrl+V</code> (no Mac, <code>⌘+V</code>). Confira se o logo e os ícones apareceram.</li>
+                <li>Logo abaixo, em <b>Padrões de assinatura</b>, escolha <code>MG Bus</code> em <b>Para uso em novos e-mails</b> e em <b>Para uso em respostas/encaminhamentos</b>.</li>
+                <li>Opcional: marque <b>“Inserir assinatura antes do texto citado nas respostas”</b>, para a assinatura ficar logo abaixo da sua resposta.</li>
+                <li>Role até o <b>fim da página</b> e clique em <b>Salvar alterações</b>. Sem esse clique, nada é gravado.</li>
+                <li>Teste: clique em <b>Escrever</b>. A assinatura deve aparecer na mensagem.</li>
+              </ol>
+              <p class="tip">Se o Gmail avisar que a assinatura é longa demais, o limite é de 10.000 caracteres: o contador no topo deste gerador mostra o tamanho atual. No app do Gmail no celular, a assinatura é separada e só em texto (Configurações → sua conta → Assinatura para dispositivos móveis); use a <b>versão para celular</b>.</p>
+            </div>
+          </details>
+        </section>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= RIGHT: PREVIEW ================= -->
+  <main class="right">
+    <div class="toolbar">
+      <div class="seg" id="viewSeg">
+        <label><input type="radio" name="view" value="desktop" checked>Desktop</label>
+        <label><input type="radio" name="view" value="mobile">Celular</label>
+      </div>
+      <label class="check" style="margin:0"><input type="checkbox" id="darkToggle"> Modo escuro (simulação)</label>
+      <div class="spacer"></div>
+      <span class="counter" id="counter" title="O Gmail aceita no máximo 10.000 caracteres na assinatura">0 / 10.000</span>
+      <button class="btn danger" id="clearBtn" type="button">Apagar todos os campos</button>
+      <a class="btn" id="logoutBtn" href="/logout" hidden>Sair</a>
+      <button class="btn primary" id="createBtn" type="button">Criar Assinatura</button>
+    </div>
+    <div class="stage">
+      <div class="mail" id="mail">
+        <div class="mail-top"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><span>Nova mensagem</span></div>
+        <div class="mail-field"><b>Para:</b><span>cliente@exemplo.com.br</span></div>
+        <div class="mail-field"><b>Assunto:</b><span>Confirmação de fretamento</span></div>
+        <div class="mail-body">
+          <p class="msg">Olá,<br><br>Segue em anexo a proposta conforme combinado. Fico à disposição para qualquer dúvida.<br><br>Atenciosamente,</p>
+          <div id="sig"></div>
+        </div>
+      </div>
+      <div class="warnings" id="warnings"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= MODAL: EXPORT ================= -->
+<div class="overlay" id="exportModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="exTitle">
+    <header><h3 id="exTitle">Sua assinatura está pronta</h3><button class="btn ghost" data-close>✕</button></header>
+    <div class="content">
+      <div class="warnings" id="exportWarnings" style="margin-bottom:14px"></div>
+      <div class="export-grid">
+        <button class="export-card" id="copyRich" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          <b>Copiar assinatura</b><small>Formatada. Cole com Ctrl+V no Gmail, Outlook Web ou Apple Mail.</small></button>
+        <button class="export-card" id="copyHtml" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>
+          <b>Copiar código HTML</b><small>HTML com estilos inline, para clientes que aceitam código-fonte.</small></button>
+        <button class="export-card" id="downloadHtm" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+          <b>Baixar arquivo .htm</b><small>Para Outlook no Windows e Thunderbird.</small></button>
+      </div>
+
+      <h4 style="margin:0 0 6px">Como instalar</h4>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:12.5px">O passo a passo detalhado para Outlook no computador, Outlook Web, Outlook Mobile e Gmail está na aba <b>Instalar</b>.</p>
+      <button class="btn primary" type="button" id="openInstall">Abrir o passo a passo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: CONFIRM ================= -->
+<div class="overlay confirm" id="confirmModal">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:420px">
+    <header><h3>Apagar todos os campos?</h3></header>
+    <div class="content">
+      <p>Todos os dados preenchidos, imagens e campos personalizados serão removidos. O modelo e o estilo escolhidos são mantidos. Essa ação não pode ser desfeita.</p>
+      <div class="actions"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="confirmClear" style="background:#B42318;border-color:#B42318">Apagar tudo</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO DA MARCA — substitua pelos valores oficiais da mgbus
+   ===================================================================== */
+const CONFIG = {
+  brand: {                       // cores PROVISÓRIAS
+    primary: '#0A3D7A',
+    accent:  '#F2A900',
+    text:    '#2B2F36',
+    link:    '#0A3D7A'
+  },
+  font: 'Arial',
+  emailDomain: 'mgbusefacin.com.br',   // domínio aceito para e-mail corporativo
+  site: 'mgbusefacin.com.br',
+  logoUrl: '',                   // URL HTTPS oficial do logo (vazio = logo em texto)
+  logoW: 120, logoH: 120,       // tamanho padrão do logo
+  iconBase: '',                  // pasta HTTPS com linkedin.png, instagram.png, ...
+  // Dados da empresa que já vêm preenchidos (o usuário pode alterar)
+  padroes: {
+    telefone:  '(31) 3390-8590',
+    end1:      'Anel Rodoviário Celso Mello Azevedo',
+    end2:      'Universitário',
+    end3:      'Belo Horizonte – MG, 31255-370',
+    linkedin:  'https://www.linkedin.com/company/mg-bus-servi%C3%A7os-ltda',
+    instagram: 'https://www.instagram.com/mgbusfacinservicos/',
+    facebook:  'https://www.facebook.com/mgbusservicos',
+    whatsapp:  'https://wa.me/553133908590',  // (31) 3390-8590
+    mapsUrl:   'https://share.google/uCNkKUox0gMjLuLmS'   // Google Meu Negócio
+  },
+  legal:
+    'AVISO DE CONFIDENCIALIDADE: esta mensagem e seus anexos podem conter informações confidenciais ' +
+    'e de uso restrito, destinadas exclusivamente ao(s) destinatário(s) indicado(s). Se você a recebeu por engano, ' +
+    'avise o remetente e apague-a, sendo proibida qualquer divulgação, cópia ou uso do seu conteúdo. ' +
+    'O tratamento de dados pessoais pela mgbus segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018). ' +
+    'Antes de imprimir, pense no meio ambiente.',
+  presets: [
+    { nome: 'Marca mgbus',  primary: '#0A3D7A', text: '#2B2F36', link: '#0A3D7A' },
+    { nome: 'Destaque',     primary: '#F2A900', text: '#2B2F36', link: '#0A3D7A' },
+    { nome: 'Grafite',      primary: '#3F4753', text: '#2B2F36', link: '#3F4753' }
+  ]
+};
+const GMAIL_LIMIT = 10000;
+// Ícones sociais (PNG 48×48, exibidos em 24×24). Usados só no preview; na
+// exportação o e-mail precisa da versão hospedada em HTTPS (CONFIG.iconBase).
+// Logo padrão MG Bus & Facin (gerador/logo.png, 240×240 exibido em 120×120).
+// Usado no preview; na exportação o e-mail precisa da URL HTTPS (CONFIG.logoUrl).
+const LOGO_DATA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAMAAAAJixmgAAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjI0NDFlZTJjLTlkNTMtNDQ5Yy1iNTZkLTZlMDBkNTk2ODlkZAAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNotob0lop4Dm94YxhuF21ZIQAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6OGIyNGYwZmUtNGI2OS00NTljLTlmMmMtNGY4YjIxNzVlZDkwbHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaMMrmMcYjN/EeiNq74Q6AyIAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYICNhXGTk70ysoHgAI8uHg9JvDJwc5861SUiMb887adl2pGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2gOMVOC0zMP+csnnYloerSvAAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFggvC9fWUK0ePSQMHyvQ5SfATYngK+0Xikl5PAvX1cZYOVkbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYToyNDQxZWUyYy05ZDUzLTQ0OWMtYjU2ZC02ZTAwZDU5Njg5ZGQvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDpmM2RjYjU5ZS0xZTFjLTQzNDItOTA4Zi03NzVjNTViZGU5YzNyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggI2FcZOTvTKygeAAjy4eD0m8MnBznzrVJSIxvzztp2XaiY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYILRWEe+DR33X0HeAucR3irFS10YEylJK+fV5gxCGPfQComN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYIBcmAipFY7bx3C7aB2z68RNEmhrefM6fdBFa7BYsna55dGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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';
+const ICON_DATA = {
+  linkedin:  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAAE60lEQVRoge2ae2xTVRzHP+eW1XUtrrw2kI25UR2MmCDrTDECRoyPzNGNhQiJhEU0c4ZIQAzxSTT6xwBfwSg+CE6IxGjGhkyjBhKNJhU6MJEAkw6cG2GMaCZ0r5bt+Ad3t9sovbe7G2WJn7/O6T2/3/l+03NOzz2ngihIKa1ACeAF5gEZgD1a21GkA2gBjgA1QI0QIqQbJaUslVI2yhuPgJRyaSzhFinl1kSrNMAWKaUSzcBYEN9PZb9u0T9sgK9MjNdEUCKEqBHqhD0OzEy0ojg5A8xS1NVmrIkHyAa8ClCcaCUm8I4D8uOJONbYSlWdn4P+Rppb2+no1l+aY2FPtpI51clit4uyIjd52enxhLuFlPIS4NBr2RO+zMZt37Bj3yH6+qQp0ddCUQRPeO+ick0h1iSLkZCgkFLqqukJX6Z4QxU/HT09IkL1WDQvh5otZYZMGDKw9s1aPqk9pNUz0508tdSDOy8Te3KSKbEd3WH8x5vZXu2j+Xy79nl5iYe31hXpxusaONbYyvzV72nD5kFPLrteW4492WpK+FCCXSFWbtrD974/ALAoCr6da3TnxNU/yUOoqvNr4jPTnaMiHsBhs7Lr1RVkpKUC0NvXR9V+v26croEDhwNauaLUMyri+3HYrJSXeCJ9+wMx22PEwNm2f7Vy/uzMQc9+D5yjaP1Onn3nay739sWvOAoFeZE+mlvbY7bFiIFgV2SdHzphX/zgOw76A2yv9lH3y4n41UbBkRL5hgf2fS10DcTClTEJ1AmXPW2imVTDZpyZ4M3PFLIoP4ecWyZyh2vayKmKA1MGxlkUvAvnjJya4WgwE9zQdIFOdS80Y+oEJqWm0NkdpqGpTWtzsaNn0NYja9oEcqaP3HAzZWD1619ytOEsANs2FPP4kgIamtq458n3Y8blZk3hjYqHePjuWWa6B7OTeLg0NF1g2fO7+ayu3nSuUTdwsz0Z53gbzvE2UgYsw1JKNry7n9a/L5nKb2oIGeHcty8Pqh/0B3j0hd10dofp6A7xxQ+/sXb5gmHnv+5D6D63i+UPzNXqvmN/mcqXkDkw69Y0rdz2T9BUroQYsFkjc6En3GsqV0IMjCT/G0g0Y96A7u+Aw2bV9uVD9+e5WVO08mTnleuDlGQrd+ZOj5lzstOutRmYA3Xv1M94+03mDWSkOzn555XNWf2JFhbMzdae7Xhp2VXtc7Om8PPHT8fMuWRhHksW5kV9Vn+iJdK3+n4cC90htNjt0srbq32G3pKGS7ArxId7fVr9/oLbdGN0DZQVubEoV5o1n29n5aY9o2Ii2BXisVf20KK+g1sUhVWFbt04Qwdb697ex0d7f9XqGWmplJd4KJiTicNm7pQi2BnisHqwdfZC5AChonQ+W9c+ohtvyEAo3Evxc5/y45Hrc7R4b/5M9m5eZehoUQF0NyPWJAs1W8ooL/Fow2k0sCgKFaXzDYsHLgopZQNwu9FOjp85T9V+Pwf8AZpb203PB4fNyoypE1hc4GJVoZvZ2WkGojROCinl58AKUyoSx25FvUQeq9QKKWWSesnnMhBwI3EamK0IIcLAxkSrGQbrhRAhBUAIUQ1sTbSiOKgUQtQO+kRKqUgpNyf2At4QlVH/ajDASLGU8lSiVUbhlJTSO1SvuIaJJPX+2Ktew2YYuckcYYLq323q1ZWyVp2vg/gPDvi4iwLI2xIAAAAASUVORK5CYII=',
+  instagram: 'data:image/png;base64,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',
+  facebook:  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjZiOTQwYzllLWJlMjItNDU5My04YTJlLTJhZmQ5MzMxYjA4ZQAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNowenBOBwj5eiXAxN/8yst0wAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6NzliNWU3ZjgtZThkOC00OGQ4LTk0MWUtODc4ODYzMTBiY2M2bHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaIJ2+pJnOnUoT1ktxNUCdqAAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYIKnr5pljoEUWMbyArsYSgjzz6WQFwsxF7hWgVmUP7iJQpGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2hCA+I7a/GCI7fYTuCUYeWYAAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFggyEnPKWXJIGvKqPz4QhkPXtbK0veGlxR/fgZPslcyLD9kbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYTo2Yjk0MGM5ZS1iZTIyLTQ1OTMtOGEyZS0yYWZkOTMzMWIwOGUvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDpmYTkxZTRiMy0zNDEzLTRkNTAtOWZlOC1kMmQzZGQ5YjJiN2FyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggqevmmWOgRRYxvICuxhKCPPPpZAXCzEXuFaBWZQ/uIlCiY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYIMsXq4EoiHNBmJO8fNd+cXmiDrUz5qZz4Um+NHlBOonZomN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYIMK7gkq8CTVwC1TJB+R3zcRW7FAS7hGHslX7ASTia1oIdGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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',
+  whatsapp:  'data:image/png;base64,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'
+};
+const STORE_KEY = 'mgbus-assinatura-v2';   // v2: dados padrão da empresa
+
+/* =====================================================================
+   ESTADO
+   ===================================================================== */
+// Publicado na Vercel (HTTPS), o próprio site hospeda o logo e os ícones,
+// então a assinatura exportada já sai com as imagens. Abrindo o arquivo
+// localmente (file://), continua valendo CONFIG.logoUrl / CONFIG.iconBase.
+const HOSTED = location.protocol === 'https:' ? location.origin : '';
+const EMPTY_DATA = {
+  nome:'', cargo:'', depto:'', telefone:'', celular:'',
+  email:'', site:'', end1:'', end2:'', end3:'', mapsUrl:'',
+  linkedin:'', instagram:'', facebook:'', x:'', whatsapp:'', waAuto:true,
+  custom:[],
+  logoData:''
+};
+const COMPANY_DATA = Object.assign({site:CONFIG.site}, CONFIG.padroes);
+const DEFAULTS = Object.assign({}, EMPTY_DATA, COMPANY_DATA, {
+  layout:'horizontal',
+  legalOn:true, legal:CONFIG.legal,
+  showLogo:true, logoUrl:CONFIG.logoUrl, logoW:CONFIG.logoW, logoH:CONFIG.logoH,
+  brandLock:true, primary:CONFIG.brand.primary, text:CONFIG.brand.text, link:CONFIG.brand.link,
+  font:CONFIG.font, scale:'m', iconMode:'badge', iconBase:CONFIG.iconBase
+});
+// Exemplo inicial para o preview não começar vazio
+const SAMPLE = {
+  nome:'Maria Silva', cargo:'Analista de Tráfego', depto:'Tráfego',
+  celular:'(31) 99999-0000',
+  email:'maria.silva@mgbusefacin.com.br'
+};
+
+let state = load();
+try{
+  if(!localStorage.getItem('mgbus-wa-padrao')){
+    if(!String(state.whatsapp || '').trim()) state.whatsapp = CONFIG.padroes.whatsapp;
+    localStorage.setItem('mgbus-wa-padrao', '1');
+  }
+}catch(e){}
+// domínio antigo salvo no navegador -> domínio correto
+['site','email'].forEach(k => { if(typeof state[k] === 'string') state[k] = state[k].replace(/(www\.)?mgbus\.com\.br/i, 'mgbusefacin.com.br'); });
+if(!['horizontal','duas'].includes(state.layout)) state.layout = 'horizontal'; // modelo vertical removido
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return Object.assign({}, DEFAULTS, JSON.parse(raw));
+  }catch(e){}
+  return Object.assign({}, DEFAULTS, SAMPLE);
+}
+let saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e){ // imagens enviadas podem estourar a cota: salva sem elas
+      try{ const s = Object.assign({}, state, {logoData:''});
+           localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(_){}
+    }
+  }, 250);
+}
+
+/* =====================================================================
+   UTILITÁRIOS
+   ===================================================================== */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const trim = s => String(s ?? '').trim();
+const isHex = v => /^#[0-9a-f]{6}$/i.test(v);
+function webUrl(u){
+  u = trim(u); if(!u) return '';
+  if(/^(https?:|mailto:|tel:)/i.test(u)) return u;
+  return 'https://' + u.replace(/^\/+/, '');
+}
+const displayUrl = u => trim(u).replace(/^https?:\/\//i,'').replace(/\/$/,'');
+const digits = s => String(s ?? '').replace(/\D/g,'');
+function telHref(n){
+  let d = digits(n); if(!d) return '';
+  if(d.length >= 10 && d.length <= 11) d = '55' + d;
+  return 'tel:+' + d;
+}
+function waHref(n){
+  let d = digits(n); if(d.length < 10) return '';
+  if(d.length <= 11) d = '55' + d;
+  return 'https://wa.me/' + d;
+}
+function fmtPhone(v){
+  const d = digits(v);
+  if(d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if(d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return v;
+}
+const FONTS = {
+  'Arial':"Arial, Helvetica, sans-serif",
+  'Trebuchet MS':"'Trebuchet MS', Arial, sans-serif",
+  'Verdana':"Verdana, Geneva, sans-serif",
+  'Tahoma':"Tahoma, Geneva, sans-serif",
+  'Georgia':"Georgia, 'Times New Roman', serif",
+  'Times New Roman':"'Times New Roman', Times, serif"
+};
+const SIZES = {
+  s:{name:15, title:12, text:11, small:9},
+  m:{name:17, title:13, text:12, small:10},
+  l:{name:20, title:14, text:13, small:11}
+};
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* Valores efetivos (aplicam a trava de marca) */
+function eff(){
+  const lock = state.brandLock;
+  return {
+    primary: lock ? CONFIG.brand.primary : (isHex(state.primary) ? state.primary : CONFIG.brand.primary),
+    text:    lock ? CONFIG.brand.text    : (isHex(state.text)    ? state.text    : CONFIG.brand.text),
+    link:    lock ? CONFIG.brand.link    : (isHex(state.link)    ? state.link    : CONFIG.brand.link),
+    font:    FONTS[lock ? CONFIG.font : state.font] || FONTS.Arial,
+    legal:   lock ? CONFIG.legal : state.legal
+  };
+}
+
+/* =====================================================================
+   GERADOR DO HTML DA ASSINATURA (tabelas + estilos inline)
+   mode: 'preview' (aceita arquivos enviados) | 'export' (só URLs)
+   ===================================================================== */
+function buildSignature(mode){
+  const s = state, c = eff(), z = SIZES[s.scale] || SIZES.m, F = c.font;
+  const base = `font-family:${F};font-size:${z.text}px;line-height:1.45;color:${c.text};`;
+  const T = 'cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;"';
+  const src = (url, data) => trim(url) ? webUrl(url) : (mode === 'preview' ? (data || '') : '');
+  const a = (href, label, color) => `<a href="${esc(href)}" style="color:${color||c.link};text-decoration:none;">${label}</a>`;
+  const tr = (html, pad='0 0 2px 0') => `<tr><td style="padding:${pad};${base}">${html}</td></tr>`;
+  const lbl = t => `<span style="color:${c.primary};font-weight:bold;">${t}</span>&nbsp;`;
+
+  /* ---------- blocos ---------- */
+  function logoHtml(){
+    if(!s.showLogo) return '';
+    const u = src(s.logoUrl, s.logoData) || (mode === 'preview' ? LOGO_DATA : (HOSTED ? HOSTED + '/logo.png' : ''));
+    if(u){
+      const w = +s.logoW || CONFIG.logoW, h = +s.logoH || CONFIG.logoH;
+      const img = `<img src="${esc(u)}" width="${w}" height="${h}" alt="MG Bus &amp; Facin Serviços" style="display:block;margin:0 auto;width:${w}px;height:${h}px;border:0;">`;
+      return trim(s.site) ? `<a href="${esc(webUrl(s.site))}" style="text-decoration:none;">${img}</a>` : img;
+    }
+    // Logo em texto (não depende de imagem)
+    const fs = Math.round(z.name * 1.35);
+    return `<span style="font-family:Arial, Helvetica, sans-serif;font-size:${fs}px;font-weight:bold;letter-spacing:-0.5px;line-height:1;color:${c.primary};">mg</span><span style="font-family:Arial, Helvetica, sans-serif;font-size:${fs}px;font-weight:bold;letter-spacing:-0.5px;line-height:1;color:${c.primary};">bus</span>`;
+  }
+  function socialHtml(center){
+    const items = [
+      ['linkedin','in', s.linkedin], ['instagram','ig', s.instagram], ['facebook','f', s.facebook],
+      ['x','X', s.x], ['whatsapp','wa', trim(s.whatsapp) || (s.waAuto ? waHref(s.celular) : '')]
+    ].filter(i => trim(i[2]));
+    if(!items.length) return '';
+    const names = {linkedin:'LinkedIn', instagram:'Instagram', facebook:'Facebook', x:'X', whatsapp:'WhatsApp'};
+    const base = (trim(s.iconBase) || (HOSTED ? HOSTED + '/icones' : '')).replace(/\/+$/,'');
+    const cells = items.map(([k, t, u], i) => {
+      const href = esc(webUrl(u)), pad = i < items.length - 1 ? 'padding:0 6px 0 0;' : 'padding:0;';
+      const icon = !ICON_DATA[k] ? '' : base ? webUrl(base + '/' + k + '.png') : (mode === 'preview' ? ICON_DATA[k] : '');
+      if(icon){
+        return `<td style="${pad}"><a href="${href}" style="text-decoration:none;"><img src="${esc(icon)}" width="24" height="24" alt="${names[k]}" style="display:block;width:24px;height:24px;border:0;"></a></td>`;
+      }
+      return `<td style="${pad}"><table ${T}><tr><td width="24" height="24" align="center" valign="middle" bgcolor="${c.primary}" style="width:24px;height:24px;background-color:${c.primary};border-radius:5px;text-align:center;vertical-align:middle;"><a href="${href}" title="${names[k]}" style="display:block;width:24px;line-height:24px;font-family:Arial, Helvetica, sans-serif;font-size:11px;font-weight:bold;color:#ffffff;text-decoration:none;text-align:center;">${t}</a></td></tr></table></td>`;
+    }).join('');
+    return `<table ${T}${center ? ' align="center"' : ''}><tr>${cells}</tr></table>`;
+  }
+  function detailsHtml(withSocial){
+    const rows = [];
+    if(trim(s.nome)) rows.push(tr(`<span style="font-family:${F};font-size:${z.name}px;font-weight:bold;color:${c.text};">${esc(s.nome)}</span>`, '0 0 1px 0'));
+    const role = [s.cargo, s.depto].map(trim).filter(Boolean).map(esc).join(' &nbsp;|&nbsp; ');
+    if(role) rows.push(tr(`<span style="font-size:${z.title}px;color:${c.primary};font-weight:bold;">${role}</span>`));
+
+    const contacts = [];
+    if(trim(s.telefone)) contacts.push(lbl('Tel') + a(telHref(s.telefone), esc(s.telefone)));
+    if(trim(s.celular)) contacts.push(lbl('Cel') + a(telHref(s.celular), esc(s.celular)));
+    if(trim(s.email))   contacts.push(lbl('E-mail') + a('mailto:' + trim(s.email), esc(trim(s.email))));
+    if(trim(s.site))    contacts.push(lbl('Site') + a(webUrl(s.site), esc(displayUrl(s.site))));
+    contacts.forEach((h, i) => rows.push(tr(h, i === 0 ? '8px 0 2px 0' : '0 0 2px 0')));
+
+    const addr = [s.end1, s.end2, s.end3].map(trim).filter(Boolean).map(esc);
+    if(addr.length) rows.push(tr(trim(s.mapsUrl) ? a(webUrl(s.mapsUrl), addr.join('<br>'), c.text) : addr.join('<br>'), contacts.length ? '6px 0 2px 0' : '8px 0 2px 0'));
+
+    const custom = (s.custom || []).filter(f => trim(f.k) || trim(f.v));
+    custom.forEach((f, i) => rows.push(tr(
+      (trim(f.k) ? `<span style="font-weight:bold;">${esc(f.k)}:</span> ` : '') + esc(f.v),
+      i === 0 ? '6px 0 2px 0' : '0 0 2px 0')));
+
+    if(withSocial){ const so = socialHtml(); if(so) rows.push(`<tr><td style="padding:10px 0 0 0;">${so}</td></tr>`); }
+    return rows.length ? `<table ${T}>${rows.join('')}</table>` : '';
+  }
+  function legalRow(colspan){
+    const txt = trim(c.legal);
+    if(!s.legalOn || !txt) return '';
+    return `<tr><td${colspan ? ` colspan="${colspan}"` : ''} style="padding:14px 0 0 0;"><table ${T} width="520" style="border-collapse:collapse;width:520px;max-width:100%;"><tr><td style="font-family:${F};font-size:${z.small}px;line-height:1.45;color:#8A8F98;">${esc(txt).replace(/\n/g,'<br>')}</td></tr></table></td></tr>`;
+  }
+
+  /* ---------- layouts ---------- */
+  let body = '';
+  const lg = logoHtml(), det = detailsHtml(s.layout !== 'duas' && !lg);
+
+  if(s.layout === 'duas'){
+    const left = [];
+    if(det) left.push(`<tr><td>${det}</td></tr>`);
+    const right = [];
+    if(lg) right.push(`<tr><td align="center" style="padding:0 0 12px 0;text-align:center;">${lg}</td></tr>`);
+    const so = socialHtml(true); if(so) right.push(`<tr><td align="center" style="padding:0 0 12px 0;text-align:center;">${so}</td></tr>`);
+    const cells = [];
+    if(left.length) cells.push(`<td valign="top" style="vertical-align:top;padding:0 18px 0 0;"><table ${T}>${left.join('')}</table></td>`);
+    if(right.length) cells.push(`<td valign="top" style="vertical-align:top;padding:0 0 0 18px;border-left:2px solid ${c.primary};"><table ${T}>${right.join('')}</table></td>`);
+    body = (cells.length ? `<tr><td><table ${T}><tr>${cells.join('')}</tr></table></td></tr>` : '') + legalRow();
+
+  } else { // horizontal
+    const left = [];
+    if(lg){
+      left.push(`<tr><td align="center" style="text-align:center;">${lg}</td></tr>`);
+      const so = socialHtml(true); if(so) left.push(`<tr><td align="center" style="padding:12px 0 0 0;text-align:center;">${so}</td></tr>`);
+    }
+    const cells = [];
+    if(left.length) cells.push(`<td valign="top" style="vertical-align:top;padding:0 16px 0 0;"><table ${T}>${left.join('')}</table></td>`);
+    if(det) cells.push(`<td valign="top" style="vertical-align:top;${left.length ? `padding:0 0 0 16px;border-left:2px solid ${c.primary};` : ''}">${det}</td>`);
+    body = (cells.length ? `<tr><td><table ${T}><tr>${cells.join('')}</tr></table></td></tr>` : '')
+         + legalRow();
+  }
+  if(!body) return '';
+  return `<table ${T}><tbody>${body}</tbody></table>`;
+}
+
+function plainText(){
+  const d = document.createElement('div'); d.innerHTML = buildSignature('export');
+  d.style.position='fixed'; d.style.left='-9999px'; document.body.appendChild(d);
+  const t = d.innerText; d.remove(); return t;
+}
+
+/* =====================================================================
+   AVISOS
+   ===================================================================== */
+function warnings(){
+  const s = state, w = [];
+  const html = buildSignature('export');
+  if(!trim(s.nome)) w.push(['err','Preencha o nome do colaborador.']);
+  if(!trim(s.email)) w.push(['err','Preencha o e-mail corporativo.']);
+  else if(!new RegExp('@' + CONFIG.emailDomain.replace(/\./g,'\\.') + '$','i').test(trim(s.email)))
+    w.push(['warn',`O e-mail não é do domínio @${CONFIG.emailDomain}.`]);
+  const up = [];
+  if(s.showLogo && s.logoData && !trim(s.logoUrl)) up.push('logotipo');
+  else if(s.showLogo && !trim(s.logoUrl) && !HOSTED) w.push(['info','Logo padrão sem URL HTTPS: aparece só no preview. Na assinatura exportada vira o logo em texto até você hospedar gerador/logo.png e informar a URL em Imagens.']);
+  if(up.length) w.push(['warn',`Imagem enviada sem URL (${up.join(', ')}): aparece só no preview. ${HOSTED ? 'Na assinatura exportada vai o logo padrão' : 'Ela fica de fora da assinatura exportada'}; para usar a sua, hospede a imagem em HTTPS e informe a URL.`]);
+  const http = ['logoUrl','iconBase'].filter(k => /^http:\/\//i.test(trim(s[k])));
+  if(http.length) w.push(['warn','Há imagens com http://. Use HTTPS para não serem bloqueadas pelos clientes de e-mail.']);
+  if(!HOSTED && !trim(s.iconBase) && (trim(s.linkedin) || trim(s.instagram) || trim(s.facebook) || trim(s.whatsapp) || (s.waAuto && trim(s.celular))))
+    w.push(['info','Ícones das redes sem pasta HTTPS: aparecem só no preview. Na assinatura exportada viram selos em texto até você hospedar a pasta gerador/icones e informá-la em Estilos.']);
+  if(html.length > GMAIL_LIMIT) w.push(['err',`O HTML tem ${html.length.toLocaleString('pt-BR')} caracteres e passa do limite de 10.000 do Gmail. Remova campos ou o rodapé.`]);
+  return {list:w, length:html.length};
+}
+function renderWarnings(el, list){
+  const icon = {err:'⛔', warn:'⚠️', info:'ℹ️'};
+  el.innerHTML = list.map(([t, m]) => `<div class="warn-item ${t === 'warn' ? '' : t}"><span>${icon[t]}</span><span>${esc(m)}</span></div>`).join('');
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render(){
+  const sig = buildSignature('preview');
+  $('#sig').innerHTML = sig || '<p style="color:#9AA3AF;font-family:Arial;font-size:13px;margin:0">Preencha os campos para ver a assinatura.</p>';
+  const w = warnings();
+  renderWarnings($('#warnings'), w.list);
+  renderWarnings($('#installWarnings'), w.list);
+  const ct = $('#counter');
+  ct.textContent = `${w.length.toLocaleString('pt-BR')} / 10.000`;
+  ct.classList.toggle('bad', w.length > GMAIL_LIMIT);
+  // e-mail inline
+  const ew = $('#emailWarn'), em = trim(state.email);
+  const bad = em && !em.toLowerCase().endsWith('@' + CONFIG.emailDomain);
+  ew.hidden = !bad; ew.textContent = bad ? `Use um endereço @${CONFIG.emailDomain}.` : '';
+  // marca
+  document.documentElement.style.setProperty('--brand', eff().primary);
+  save();
+}
+
+/* =====================================================================
+   FORMULÁRIO <-> ESTADO
+   ===================================================================== */
+function fillForm(){
+  $$('[data-k]').forEach(el => {
+    const k = el.dataset.k, v = state[k];
+    if(el.type === 'checkbox') el.checked = !!v;
+    else if(el.type === 'radio') el.checked = (el.value === v);
+    else el.value = v ?? '';
+  });
+  $$('[data-color]').forEach(el => { const v = state[el.dataset.color]; if(isHex(v)) el.value = v; });
+  $$('[data-clear]').forEach(b => b.hidden = !state[b.dataset.clear]);
+  $$('#tpls .tpl').forEach(b => b.classList.toggle('active', b.dataset.layout === state.layout));
+  renderCustom();
+  applyLock();
+}
+function applyLock(){
+  const lock = state.brandLock, c = eff();
+  ['primary','text','link'].forEach(k => {
+    const t = $(`[data-k="${k}"]`), p = $(`[data-color="${k}"]`);
+    t.disabled = p.disabled = lock;
+    if(lock){ t.value = c[k]; p.value = c[k]; }
+  });
+  const f = $('[data-k="font"]'); f.disabled = lock; if(lock) f.value = CONFIG.font;
+  const lt = $('#legalText'); lt.disabled = lock; if(lock) lt.value = CONFIG.legal;
+  $$('#swatches .swatch').forEach(b => b.disabled = lock);
+  $('#swatches').style.opacity = lock ? .5 : 1;
+}
+
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el.dataset.k && el.type !== 'radio'){
+    state[el.dataset.k] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? +el.value : el.value);
+    if(['primary','text','link'].includes(el.dataset.k) && isHex(el.value)) $(`[data-color="${el.dataset.k}"]`).value = el.value;
+    if(el.dataset.k === 'brandLock') applyLock();
+    render();
+  } else if(el.dataset.color){
+    state[el.dataset.color] = el.value; $(`[data-k="${el.dataset.color}"]`).value = el.value; render();
+  }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if(el.type === 'radio' && el.dataset.k){ state[el.dataset.k] = el.value; render(); }
+  if(el.dataset.upload){
+    const f = el.files[0]; if(!f) return;
+    if(f.size > 2 * 1024 * 1024){ toast('Arquivo maior que 2 MB. Use uma imagem menor.'); el.value=''; return; }
+    const r = new FileReader();
+    r.onload = () => {
+      state[el.dataset.upload] = r.result;
+      const done = () => { fillForm(); render(); toast('Imagem carregada no preview'); };
+      if(el.dataset.upload === 'logoData'){
+        const im = new Image();
+        im.onload = () => { if(im.naturalWidth){ state.logoW = CONFIG.logoW; state.logoH = Math.round(CONFIG.logoW * im.naturalHeight / im.naturalWidth); } done(); };
+        im.onerror = done; im.src = r.result;
+      } else done();
+    };
+    r.readAsDataURL(f); el.value = '';
+  }
+});
+document.addEventListener('focusout', e => {
+  const el = e.target;
+  if(el.matches && el.matches('[data-phone]')){ el.value = fmtPhone(el.value); state[el.dataset.k] = el.value; render(); }
+});
+$$('[data-clear]').forEach(b => b.addEventListener('click', () => {
+  state[b.dataset.clear] = '';
+  if(b.dataset.clear === 'logoData'){ state.logoW = CONFIG.logoW; state.logoH = CONFIG.logoH; }  // volta ao logo padrão
+  fillForm(); render();
+}));
+
+/* abas */
+$('#rail').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]'); if(!b) return;
+  $$('#rail button').forEach(x => x.classList.toggle('active', x === b));
+  $$('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + b.dataset.tab));
+});
+/* modelos */
+$('#tpls').addEventListener('click', e => {
+  const b = e.target.closest('.tpl'); if(!b) return;
+  state.layout = b.dataset.layout;
+  $$('#tpls .tpl').forEach(x => x.classList.toggle('active', x === b));
+  render();
+});
+/* presets */
+$('#swatches').innerHTML = CONFIG.presets.map((p, i) =>
+  `<button class="swatch" type="button" data-preset="${i}"><i style="background:${p.primary}"></i><i style="background:${p.link}"></i>${esc(p.nome)}</button>`).join('');
+$('#swatches').addEventListener('click', e => {
+  const b = e.target.closest('[data-preset]'); if(!b || state.brandLock) return;
+  const p = CONFIG.presets[+b.dataset.preset];
+  Object.assign(state, {primary:p.primary, text:p.text, link:p.link}); fillForm(); render();
+});
+
+/* campos personalizados */
+function renderCustom(){
+  $('#customList').innerHTML = (state.custom || []).map((f, i) => `
+    <div class="custom-row">
+      <input type="text" placeholder="Rótulo (ex.: Matrícula)" value="${esc(f.k)}" data-ci="${i}" data-cf="k">
+      <input type="text" placeholder="Valor" value="${esc(f.v)}" data-ci="${i}" data-cf="v">
+      <button class="btn sm ghost danger" type="button" data-cdel="${i}" title="Remover">✕</button>
+    </div>`).join('');
+}
+$('#customList').addEventListener('input', e => {
+  const el = e.target; if(el.dataset.ci === undefined) return;
+  state.custom[+el.dataset.ci][el.dataset.cf] = el.value; render();
+});
+$('#customList').addEventListener('click', e => {
+  const b = e.target.closest('[data-cdel]'); if(!b) return;
+  state.custom.splice(+b.dataset.cdel, 1); renderCustom(); render();
+});
+$('#addCustom').addEventListener('click', () => {
+  state.custom = state.custom || []; state.custom.push({k:'', v:''}); renderCustom();
+  const ins = $$('#customList input'); ins[ins.length - 2]?.focus();
+});
+
+/* preview: desktop/celular e modo escuro */
+$('#viewSeg').addEventListener('change', e => $('#mail').classList.toggle('mobile', e.target.value === 'mobile'));
+$('#darkToggle').addEventListener('change', e => $('#mail').classList.toggle('dark', e.target.checked));
+
+/* =====================================================================
+   MODAIS E EXPORTAÇÃO
+   ===================================================================== */
+function openModal(id){ $(id).classList.add('open'); }
+$$('.overlay').forEach(o => o.addEventListener('click', e => {
+  if(e.target === o || e.target.closest('[data-close]')) o.classList.remove('open');
+}));
+document.addEventListener('keydown', e => { if(e.key === 'Escape') $$('.overlay.open').forEach(o => o.classList.remove('open')); });
+
+$('#createBtn').addEventListener('click', () => {
+  renderWarnings($('#exportWarnings'), warnings().list.filter(w => w[0] !== 'info'));
+  openModal('#exportModal');
+});
+$('#clearBtn').addEventListener('click', () => openModal('#confirmModal'));
+$('#confirmClear').addEventListener('click', () => {
+  Object.assign(state, JSON.parse(JSON.stringify(EMPTY_DATA)));
+  fillForm(); render(); $('#confirmModal').classList.remove('open'); toast('Campos apagados');
+});
+
+function legacyCopy(node){
+  const sel = window.getSelection(), range = document.createRange();
+  range.selectNodeContents(node); sel.removeAllRanges(); sel.addRange(range);
+  let ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+  sel.removeAllRanges(); return ok;
+}
+$('#copyRich').addEventListener('click', async () => {
+  const html = buildSignature('export');
+  if(!html){ toast('A assinatura está vazia'); return; }
+  try{
+    if(!window.ClipboardItem) throw 0;
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], {type:'text/html'}),
+      'text/plain': new Blob([plainText()], {type:'text/plain'})
+    })]);
+    toast('Assinatura copiada. Cole no seu cliente de e-mail.');
+  }catch(e){
+    const d = document.createElement('div');
+    d.contentEditable = 'true'; d.innerHTML = html;
+    Object.assign(d.style, {position:'fixed', left:'-9999px', top:'0', background:'#fff'});
+    document.body.appendChild(d);
+    const ok = legacyCopy(d); d.remove();
+    toast(ok ? 'Assinatura copiada. Cole no seu cliente de e-mail.' : 'Não foi possível copiar. Selecione a assinatura no preview e use Ctrl+C.');
+  }
+});
+$('#copyHtml').addEventListener('click', async () => {
+  const html = buildSignature('export');
+  try{ await navigator.clipboard.writeText(html); toast('Código HTML copiado'); }
+  catch(e){
+    const t = document.createElement('textarea'); t.value = html;
+    Object.assign(t.style, {position:'fixed', left:'-9999px'}); document.body.appendChild(t); t.select();
+    let ok = false; try{ ok = document.execCommand('copy'); }catch(_){}
+    t.remove(); toast(ok ? 'Código HTML copiado' : 'Não foi possível copiar o código');
+  }
+});
+$('#downloadHtm').addEventListener('click', () => {
+  const html = `<!DOCTYPE html>\n<html lang="pt-BR"><head><meta charset="utf-8"><title>Assinatura mgbus</title></head><body style="margin:0;padding:0;">\n${buildSignature('export')}\n</body></html>`;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  const nome = (trim(state.nome) || 'assinatura').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  a.href = URL.createObjectURL(blob); a.download = `mgbus-${nome}.htm`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('Arquivo .htm baixado');
+});
+
+/* aba Instalar */
+$$('[data-act]').forEach(b => b.addEventListener('click', () => $('#' + b.dataset.act).click()));
+function mobileText(){
+  const s = state, L = [];
+  if(trim(s.nome)) L.push(trim(s.nome));
+  const role = [s.cargo, s.depto].map(trim).filter(Boolean).join(' | '); if(role) L.push(role);
+  const c = [];
+  if(trim(s.telefone)) c.push('Tel: ' + trim(s.telefone));
+  if(trim(s.celular))  c.push('Cel: ' + trim(s.celular));
+  if(trim(s.email))    c.push('E-mail: ' + trim(s.email));
+  if(trim(s.site))     c.push('Site: ' + trim(s.site));
+  if(c.length){ L.push(''); L.push(...c); }
+  const addr = [s.end1, s.end2, s.end3].map(trim).filter(Boolean);
+  if(addr.length){ L.push(''); L.push(...addr); }
+  return L.join('\n');
+}
+$('#copyMobile').addEventListener('click', async () => {
+  const t = mobileText(); if(!t){ toast('A assinatura está vazia'); return; }
+  try{ await navigator.clipboard.writeText(t); toast('Versão para celular copiada'); }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = t;
+    Object.assign(ta.style, {position:'fixed', left:'-9999px'}); document.body.appendChild(ta); ta.select();
+    let ok = false; try{ ok = document.execCommand('copy'); }catch(_){}
+    ta.remove(); toast(ok ? 'Versão para celular copiada' : 'Não foi possível copiar');
+  }
+});
+$('#openInstall').addEventListener('click', () => {
+  $('#exportModal').classList.remove('open');
+  $('#rail button[data-tab="instalar"]').click();
+});
+
+/* init */
+if(HOSTED) $('#logoutBtn').hidden = false;
+fillForm(); render();
+</script>
+</body>
+</html>

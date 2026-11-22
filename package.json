@@ -1,0 +1,9 @@
+{
+  "name": "mgbus-assinatura-email",
+  "private": true,
+  "type": "module",
+  "description": "Gerador de assinaturas de e-mail da MG Bus & Facin Serviços, com acesso por código.",
+  "dependencies": {
+    "@vercel/functions": "^3.11.3"
+  }
+}
